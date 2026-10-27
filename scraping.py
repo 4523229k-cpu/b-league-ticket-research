@@ -7,6 +7,9 @@ from urllib.parse import urljoin
 import unicodedata
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from pathlib import Path
+
+
 BASE = "https://ticketjam.jp"
 LIST = BASE + "/tickets/bj-league"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -111,6 +114,7 @@ urls = list(dict.fromkeys(
 ))
 
 data = []
+failed_urls = []
 for i, url in enumerate(urls, 1):
     print(f"{i}/{len(urls)}: {url}")
     try:
@@ -148,6 +152,9 @@ for i, url in enumerate(urls, 1):
                 "座席番号": seat_no,
                 "セクション": section,
                 "チケットURL": urljoin(BASE, a["href"])
+                "取得日時": datetime.now(
+                    ZoneInfo("Asia/Tokyo")
+                ).strftime("%Y-%m-%d %H:%M:%S"),
             })
         time.sleep(1)
     except requests.RequestException as e:
@@ -166,7 +173,10 @@ if not df.empty:
 today = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d")
 
 # 日付ごとにCSVを作成
-filename = f"bj_league_ticket_data_{today}.csv"
+output_dir = Path("data")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+filename = output_dir / f"bj_league_ticket_data_{today}.csv"
 
 df.to_csv(filename, index=False, encoding="utf-8-sig")
 
