@@ -158,8 +158,8 @@ for i, url in enumerate(urls, 1):
             })
         time.sleep(1)
     except requests.RequestException as e:
-    print("取得失敗:", url, e)
-    failed_urls.append(url)
+        print("取得失敗:", url, e)
+        failed_urls.append(url)
     print("取得失敗ページ数:", len(failed_urls))
 
 df = pd.DataFrame(data)
