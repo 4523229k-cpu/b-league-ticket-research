@@ -3,8 +3,8 @@ name: Daily B-League Scraping
 
 on:
   schedule:
-    - cron: "0 0 * * *"
-      timezone: "Asia/Tokyo"
+    - cron: "0 22 * * *"
+
   workflow_dispatch:
 
 permissions:
