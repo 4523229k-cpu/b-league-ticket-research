@@ -48,13 +48,11 @@ def get_seat_info(text):
       seat_type = "自由席"
     else:
       seat_type = "指定席"
-
-
     
     # エリアの抽出
     area = None
 
-    # ブロック表記を優先して取得
+    # ブロック表記を優先
     block = re.search(
         r"([A-Z]+\d+)\s*ブロック",
         text,
@@ -63,9 +61,7 @@ def get_seat_info(text):
 
     if block:
         area = block.group(1)
-
     else:
-        # 【座席階｜エリア｜列｜座席番号】に対応
         match = re.search(
             r"[【\[]\s*"
             r"(?:上層|下層|\d+\s*(?:階|F))"
@@ -77,18 +73,13 @@ def get_seat_info(text):
         if match:
             candidate = match.group(1).strip()
 
-            # 列・座席番号をエリアとして扱わない
+            # 列や座席番号をエリアと誤認しない
             if not re.search(
                 r"\d+\s*(?:[~〜\-]\s*\d+)?\s*(?:列|番)",
                 candidate
             ):
                 area = candidate
 
-
-    area = (
-        area.group(1).strip() if area else
-        block.group(1) if block else None
-    )
 
     # セクション
     section = re.search(
