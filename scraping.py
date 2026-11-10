@@ -151,18 +151,36 @@ for i, url in enumerate(urls, 1):
                 "列": row,
                 "座席番号": seat_no,
                 "セクション": section,
-                "チケットURL": urljoin(BASE, a["href"])
+                "チケットURL": urljoin(BASE, a["href"]),
                 "取得日時": datetime.now(
                     ZoneInfo("Asia/Tokyo")
                 ).strftime("%Y-%m-%d %H:%M:%S"),
             })
         time.sleep(1)
     except requests.RequestException as e:
-        print("取得失敗:", e)
+    print("取得失敗:", url, e)
+    failed_urls.append(url)
+    print("取得失敗ページ数:", len(failed_urls))
 
 df = pd.DataFrame(data)
-if not df.empty:
-    df = df.drop_duplicates(subset=["チケットURL"])
+
+# 取得件数が0件の場合は処理を中止
+if df.empty:
+    raise RuntimeError(
+        "取得件数が0件のため、CSVの保存を中止しました。"
+    )
+
+# データの重複削除と前処理
+df = df.drop_duplicates(subset=["チケットURL"])
+
+df["開催日"] = pd.to_datetime(df["開催日"], errors="coerce")
+
+for col in ["価格", "枚数"]:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
+
+df["曜日"] = df["開催日"].dt.dayofweek
+df["開催月"] = df["開催日"].dt.month
+
     df["開催日"] = pd.to_datetime(df["開催日"], errors="coerce")
     for col in ["価格", "枚数"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
