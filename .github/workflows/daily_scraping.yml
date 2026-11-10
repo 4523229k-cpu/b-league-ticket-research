@@ -23,6 +23,15 @@ jobs:
       - name: Check Python syntax
         run: python -m py_compile scraping.py
 
+      - name: Install Python libraries
+        run: pip install -r requirements.txt
+
+      - name: Check Python imports
+        run: |
+          python -c "import requests"
+          python -c "import bs4"
+          python -c "import pandas"
+
       - name: Create test CSV
         env:
           TZ: Asia/Tokyo
