@@ -181,12 +181,6 @@ for col in ["価格", "枚数"]:
 df["曜日"] = df["開催日"].dt.dayofweek
 df["開催月"] = df["開催日"].dt.month
 
-    df["開催日"] = pd.to_datetime(df["開催日"], errors="coerce")
-    for col in ["価格", "枚数"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    df["曜日"] = df["開催日"].dt.dayofweek
-    df["開催月"] = df["開催日"].dt.month
-
 # 日本時間の取得日
 today = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d")
 
