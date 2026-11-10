@@ -21,8 +21,13 @@ def get_soup(url):
 
 
 def get_seat_info(text):
-    # 全角英数字や記号の表記ゆれを統一
+    # 表記ゆれを統一
     text = unicodedata.normalize("NFKC", text)
+
+    # 範囲記号を統一
+    text = text.replace("～", "〜")
+    text = text.replace("~", "〜")
+
 
     # 座席階
     floor = re.search(
@@ -45,14 +50,40 @@ def get_seat_info(text):
       seat_type = "指定席"
 
 
-    # エリア
-    area = re.search(
-        r"[【\[]\s*(?:上層|下層|\d+(?:階|F))\s*[|｜]\s*([^|｜]+)",
-        text, re.I
+    
+    # エリアの抽出
+    area = None
+
+    # ブロック表記を優先して取得
+    block = re.search(
+        r"([A-Z]+\d+)\s*ブロック",
+        text,
+        re.I
     )
 
-    # ブロック表記にも対応
-    block = re.search(r"([A-Z]?\d+)\s*ブロック", text, re.I)
+    if block:
+        area = block.group(1)
+
+    else:
+        # 【座席階｜エリア｜列｜座席番号】に対応
+        match = re.search(
+            r"[【\[]\s*"
+            r"(?:上層|下層|\d+\s*(?:階|F))"
+            r"\s*[|｜]\s*([^|｜\]】]+)",
+            text,
+            re.I
+        )
+
+        if match:
+            candidate = match.group(1).strip()
+
+            # 列・座席番号をエリアとして扱わない
+            if not re.search(
+                r"\d+\s*(?:[~〜\-]\s*\d+)?\s*(?:列|番)",
+                candidate
+            ):
+                area = candidate
+
 
     area = (
         area.group(1).strip() if area else
