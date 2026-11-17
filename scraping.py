@@ -22,75 +22,93 @@ def get_soup(url):
 
 def get_seat_info(text):
     # 表記ゆれを統一
-    text = unicodedata.normalize("NFKC", text)
-
-    # 範囲記号を統一
-    text = text.replace("～", "〜")
-    text = text.replace("~", "〜")
-
+    text = unicodedata.normalize("NFKC", str(text))
+    text = text.replace("～", "〜").replace("~", "〜")
 
     # 座席階
-    floor = re.search(
-        r"上層|下層|\d+\s*(?:階|F)\s*席?|"
+    floor_match = re.search(
+        r"\d+\s*レベル|上層|下層|"
+        r"\d+\s*(?:階|F)\s*席?|"
         r"アリーナ席?|スタンド席?",
         text, re.I
     )
-    floor = floor.group() if floor else None
+
+    floor = floor_match.group() if floor_match else None
 
     if floor:
-        floor = re.sub(r"(\d+)\s*F", r"\1階", floor, flags=re.I)
+        floor = re.sub(
+            r"(\d+)\s*F", r"\1階", floor, flags=re.I
+        )
         floor = floor.replace("席", "")
 
-    # 座席種別を3種類に分類
+    # 座席種別
     if "当日引換券" in text:
-      seat_type = "座席選択不可（当日引換券）"
+        seat_type = "座席選択不可（当日引換券）"
     elif "自由席" in text:
-      seat_type = "自由席"
+        seat_type = "自由席"
     else:
-      seat_type = "指定席"
-    
-    # エリアの抽出
+        seat_type = "指定席"
+
+    # エリア
     area = None
 
-    # ブロック表記を優先
+    # ブロック表記
     block = re.search(
         r"([A-Z]+\d+)\s*ブロック",
-        text,
-        re.I
+        text, re.I
     )
 
     if block:
         area = block.group(1)
+
     else:
-        match = re.search(
-            r"[【\[]\s*"
-            r"(?:上層|下層|\d+\s*(?:階|F))"
-            r"\s*[|｜]\s*([^|｜\]】]+)",
-            text,
-            re.I
+        # 「エリアA」「Aエリア」に対応
+        area_match = re.search(
+            r"エリア\s*([A-Z]+)(?![A-Z0-9])|"
+            r"\b([A-Z]+)\s*エリア",
+            text, re.I
         )
 
-        if match:
-            candidate = match.group(1).strip()
+        if area_match:
+            candidate = (
+                area_match.group(1)
+                or area_match.group(2)
+            )
 
-            # 列や座席番号をエリアと誤認しない
-            if not re.search(
-                r"\d+\s*(?:[~〜\-]\s*\d+)?\s*(?:列|番)",
-                candidate
+            # 4Fなどの階数表記を除外
+            if not re.fullmatch(
+                r"\d+F?", candidate, re.I
             ):
                 area = candidate
 
+        # 「下層 A15」「下層｜A15」に対応
+        if area is None:
+            match = re.search(
+                r"(?:上層|下層)"
+                r"\s*[|｜]?\s*([A-Z]+\d+)",
+                text, re.I
+            )
+
+            if match:
+                area = match.group(1)
 
     # セクション
     section = re.search(
-        r"セクション\s*([A-Z0-9]+)", text, re.I
+        r"セクション\s*([A-Z0-9]+)|"
+        r"([A-Z0-9]+)\s*セクション",
+        text, re.I
     )
 
-    # 列（範囲表記にも対応）
+    section_value = None
+    if section:
+        section_value = section.group(1) or section.group(2)
+
+    # 列
     row = re.search(
-        r"(\d+)\s*(?:[~〜\-]\s*(\d+))?\s*列",
+        r"(\d+)\s*(?:[〜\-]\s*(\d+))?\s*列",
         text
     )
+
     row_value = None
     if row:
         row_value = (
@@ -100,9 +118,10 @@ def get_seat_info(text):
 
     # 座席番号
     seat = re.search(
-        r"(\d+)\s*(?:[~〜\-]\s*(\d+))?\s*番",
+        r"(\d+)\s*(?:[〜\-]\s*(\d+))?\s*番",
         text
     )
+
     seat_value = None
     if seat:
         seat_value = (
@@ -110,21 +129,13 @@ def get_seat_info(text):
             if seat.group(2) else seat.group(1)
         )
 
-    seat_known = (
-        "位置情報あり"
-        if row_value is not None and seat_value is not None
-        else "一部判明"
-        if any(x is not None for x in [floor, area, row_value, seat_value])
-        else "不明"
-    )
-
     return (
         floor,
         area,
-        section.group(1) if section else None,
+        section_value,
         row_value,
         seat_value,
-        seat_type,
+        seat_type
     )
 
 
@@ -165,6 +176,7 @@ for i, url in enumerate(urls, 1):
                 "試合名": game,
                 "開催日": dt.group(1) if dt else None,
                 "開始時刻": dt.group(2) if dt else None,
+                "座席情報原文": seat_text,
                 "価格": int(price.group(1).replace(",", "")) if price else None,
                 "枚数": int(qty.group(1)) if qty else None,
                 "座席種別": seat_type,
